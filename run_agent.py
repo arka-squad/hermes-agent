@@ -3355,6 +3355,8 @@ class AIAgent:
         providers are strictly best-effort — a misconfigured or offline
         backend must not block the user from seeing their response.
         """
+        from agent.memory_events import capture_turn_end
+        capture_turn_end(self, final_response, interrupted)
         if interrupted:
             return
         if not (self._memory_manager and final_response and original_user_message):

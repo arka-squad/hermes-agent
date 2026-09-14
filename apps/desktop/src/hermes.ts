@@ -10,6 +10,10 @@ import type {
   BackendUpdateCheckResponse,
   ComputerUseStatus,
   ConfigSchemaResponse,
+  CortexActivationResponse,
+  CortexActivationStart,
+  CortexStatusResponse,
+  CortexVerifyResponse,
   CronJob,
   CronJobCreatePayload,
   CronJobUpdates,
@@ -1075,6 +1079,47 @@ export function installMcpCatalogEntry(
 // ---------------------------------------------------------------------------
 // Memory data + curator (parity with `hermes memory` / `hermes curator`).
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Cortex Cognitive Provider (hermes_cli/cortex_routes.py).
+// ---------------------------------------------------------------------------
+
+export function getCortexStatus(): Promise<CortexStatusResponse> {
+  return window.hermesDesktop.api<CortexStatusResponse>({
+    ...profileScoped(),
+    path: '/api/cortex/status'
+  })
+}
+
+/** Creates a single-use activation operation; the returned deep link opens
+ *  Cortex on the authorization. No secret travels. */
+export function startCortexActivation(): Promise<CortexActivationStart> {
+  return window.hermesDesktop.api<CortexActivationStart>({
+    ...profileScoped(),
+    path: '/api/cortex/activation',
+    method: 'POST',
+    body: profileScoped()
+  })
+}
+
+export function getCortexActivation(operationId: string): Promise<CortexActivationResponse> {
+  return window.hermesDesktop.api<CortexActivationResponse>({
+    ...profileScoped(),
+    path: `/api/cortex/activation/${encodeURIComponent(operationId)}`
+  })
+}
+
+/** Runs the plugin's diagnostic runtime: a real Hermes agent, this profile,
+ *  no model request. Prepares the proof; it does not restart a session. */
+export function verifyCortex(): Promise<CortexVerifyResponse> {
+  return window.hermesDesktop.api<CortexVerifyResponse>({
+    ...profileScoped(),
+    path: '/api/cortex/verify',
+    method: 'POST',
+    body: profileScoped(),
+    timeoutMs: 120_000
+  })
+}
 
 export function getMemoryStatus(): Promise<MemoryStatusResponse> {
   return window.hermesDesktop.api<MemoryStatusResponse>({

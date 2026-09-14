@@ -22,6 +22,7 @@ import { CONTROL_TEXT, EMPTY_SELECT_VALUE, FIELD_DESCRIPTIONS, FIELD_LABELS, SEC
 import { fieldCopyForSchemaKey } from './field-copy'
 import { enumOptionsFor, getNested, prettyName, setNested } from './helpers'
 import { MemoryConnect } from './memory/connect'
+import { CortexProviderPanel } from './memory/cortex-panel'
 import { ModelSettings } from './model-settings'
 import { EmptyState, ListRow, LoadingState, SettingsContent } from './primitives'
 import { ProviderConfigPanel } from './provider-config-panel'
@@ -413,6 +414,9 @@ export function ConfigSettings({
               {key === 'memory.provider' && typeof getNested(config, key) === 'string' && getNested(config, key) ? (
                 <ProviderConfigPanel provider={String(getNested(config, key))} />
               ) : null}
+              {/* Cortex is activated from here BEFORE it is the selected provider:
+                  the guided activation selects it (spec §5.1). */}
+              {key === 'memory.provider' ? <CortexProviderPanel /> : null}
             </div>
           ))}
         </div>

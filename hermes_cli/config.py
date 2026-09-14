@@ -2081,6 +2081,10 @@ DEFAULT_CONFIG = {
         # "hindsight", "holographic", "retaindb", "byterover".
         # Only ONE external provider is allowed at a time.
         "provider": "",
+        # Required providers fail visibly instead of silently disabling memory.
+        "provider_required": False,
+        # "provider" mediates MEMORY.md/USER.md injection; files remain writable.
+        "native_context": "builtin",
     },
 
     # Subagent delegation — override the provider:model used by delegate_task

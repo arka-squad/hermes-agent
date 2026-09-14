@@ -474,6 +474,9 @@ def build_turn_context(
         agent._interrupt_message = None
         agent._interrupt_thread_signal_pending = False
 
+    from agent.memory_events import capture_turn_start
+    capture_turn_start(agent, original_user_message if isinstance(original_user_message, str) else "")
+
     # Notify memory providers of the new turn (BEFORE prefetch_all).
     if agent._memory_manager:
         try:

@@ -423,7 +423,7 @@ def build_system_prompt_parts(agent: Any, system_message: Optional[str] = None) 
     # ── Volatile tier (changes per session/turn — never cached) ───
     volatile_parts: List[str] = []
 
-    if agent._memory_store:
+    if agent._memory_store and getattr(agent, "_native_memory_mediated", False) is not True:
         if agent._memory_enabled:
             mem_block = agent._memory_store.format_for_system_prompt("memory")
             if mem_block:
@@ -442,6 +442,10 @@ def build_system_prompt_parts(agent: Any, system_message: Optional[str] = None) 
                 volatile_parts.append(_ext_mem_block)
         except Exception:
             pass
+
+    memory_policy = getattr(agent, "_memory_context_policy", "")
+    if isinstance(memory_policy, str) and memory_policy:
+        volatile_parts.append(memory_policy)
 
     from hermes_time import now as _hermes_now
     now = _hermes_now()

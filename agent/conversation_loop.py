@@ -323,6 +323,10 @@ def _restore_or_build_system_prompt(agent, system_message, conversation_history)
                 agent.session_id, exc,
             )
 
+    if conversation_history and getattr(agent, "_native_memory_mediated", False) is True:
+        from agent.memory_runtime import validate_restored_memory_policy
+        validate_restored_memory_policy(agent, stored_prompt or "")
+
     if stored_prompt and _stored_prompt_matches_runtime(agent, stored_prompt):
         # Continuing session — reuse the exact system prompt from the
         # previous turn so the Anthropic cache prefix matches.
@@ -791,7 +795,10 @@ def run_conversation(
             if idx == current_turn_user_idx and msg.get("role") == "user":
                 _injections = []
                 if _ext_prefetch_cache:
-                    _fenced = build_memory_context_block(_ext_prefetch_cache)
+                    _fenced = build_memory_context_block(
+                        _ext_prefetch_cache,
+                        qualified=getattr(agent, "_native_memory_mediated", False) is True,
+                    )
                     if _fenced:
                         _injections.append(_fenced)
                 if _plugin_user_context:
@@ -1009,6 +1016,10 @@ def run_conversation(
         api_kwargs = None  # Guard against UnboundLocalError in except handler
         api_request_id = f"{turn_id}:api:{api_call_count}"
         agent._current_api_request_id = api_request_id
+        # Send boundary (context_inclusion.v1): the messages below are the ones
+        # the model adapter receives for this request id, prefix included.
+        from agent.memory_events import capture_request
+        capture_request(agent, api_request_id, api_messages)
 
         while retry_count < max_retries:
             # ── Nous Portal rate limit guard ──────────────────────

@@ -28,6 +28,8 @@ Optional hooks (override to opt in):
   on_pre_compress(messages) -> str       — extract before context compression
   on_memory_write(action, target, content, metadata=None) — mirror built-in memory writes
   on_delegation(task, result, **kwargs)  — parent-side observation of subagent work
+  on_request_sent(request_id, messages)  — the exact messages handed to the model
+                                           adapter (hosts with context_inclusion.v1)
   backup_paths() -> list[str]            — extra on-disk paths to include in `hermes backup`
 """
 
@@ -47,6 +49,10 @@ class MemoryProvider(ABC):
     @abstractmethod
     def name(self) -> str:
         """Short identifier for this provider (e.g. 'builtin', 'honcho', 'hindsight')."""
+
+    # Optional host contract. Existing providers keep their previous behaviour.
+    required_runtime_capabilities: frozenset[str] = frozenset()
+    capture_without_native_memory: bool = False
 
     # -- Core lifecycle (implement these) ------------------------------------
 
@@ -72,8 +78,9 @@ class MemoryProvider(ABC):
 
         kwargs may also include:
           - agent_context (str): "primary", "subagent", "cron", or "flush".
-            Providers should skip writes for non-primary contexts (cron system
-            prompts would corrupt user representations).
+            Providers must not treat non-primary prompts as human preferences.
+            Capture with personal memory disabled requires explicit opt-in via
+            capture_without_native_memory. parent_session_id carries lineage.
           - agent_identity (str): Profile name (e.g. "coder"). Use for
             per-profile provider identity scoping.
           - agent_workspace (str): Shared workspace name (e.g. "hermes").
@@ -275,6 +282,23 @@ class MemoryProvider(ABC):
         - save_config() for native config file formats, OR
         - use only env vars (in which case get_config_schema() fields
           should all have ``env_var`` set and this method stays no-op).
+        """
+
+    def on_request_sent(self, request_id: str, messages: List[Dict[str, Any]]) -> None:
+        """Called at the send boundary by hosts offering context_inclusion.v1.
+
+        ``messages`` is the exact list given to the model adapter for
+        ``request_id``. Providers use it to attest that a context they served
+        is INCLUDED in a request — inclusion is not use. Must not raise to
+        block the request; failures are the provider's to journal.
+        """
+
+    def capture_event(self, event: Dict[str, Any]) -> None:
+        """Durably capture an event for providers opting into durable_tool_capture.v1.
+
+        Called synchronously at the execution boundary. Raise before an action
+        if its intent cannot be committed. Reject a repeated tool intent rather
+        than permitting an uncertain action to execute twice. Not best-effort.
         """
 
     def on_memory_write(

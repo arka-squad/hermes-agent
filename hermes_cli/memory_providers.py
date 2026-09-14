@@ -136,10 +136,17 @@ HINDSIGHT = MemoryProvider(
 )
 
 
+# Cortex Cognitive Provider: activation is guided (Cortex app or the Cortex
+# settings view), so it declares no typed field — the generic panel renders
+# nothing and the dedicated view carries the flow.
+CORTEX = MemoryProvider(name="cortex", label="Cortex Cognitive Provider", fields=())
+
+
 # Registry of providers that expose a desktop config surface. Providers without
 # an entry here (e.g. ``builtin``) simply render no config panel.
 MEMORY_PROVIDERS: dict[str, MemoryProvider] = {
     HINDSIGHT.name: HINDSIGHT,
+    CORTEX.name: CORTEX,
 }
 
 
