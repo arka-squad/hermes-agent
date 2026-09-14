@@ -301,6 +301,11 @@ from hermes_cli.memory_oauth import router as _memory_oauth_router  # noqa: E402
 
 app.include_router(_memory_oauth_router)
 
+# Cortex Cognitive Provider activation routes: same rule, own module.
+from hermes_cli.cortex_routes import router as _cortex_router  # noqa: E402
+
+app.include_router(_cortex_router)
+
 # Session token for sensitive endpoints. The desktop shell mints it via
 # HERMES_DASHBOARD_SESSION_TOKEN; otherwise fresh per server start. It dies with
 # the process and is injected into the SPA HTML so only the web UI can use it.

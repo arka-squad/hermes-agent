@@ -1226,6 +1226,10 @@ DEFAULT_CONFIG = {
         # External memory provider plugin (empty = built-in only); only ONE at a time: "openviking",
         # "mem0", "hindsight", "holographic", "retaindb", "byterover".
         "provider": "",
+        # Required providers fail visibly instead of silently disabling memory.
+        "provider_required": False,
+        # "provider" mediates MEMORY.md/USER.md injection; files remain writable.
+        "native_context": "builtin",
     },
     # Subagent delegation — override the provider:model used by delegate_task so children run on a
     # cheaper/faster model. Uses the same runtime provider resolution as CLI/gateway startup, so

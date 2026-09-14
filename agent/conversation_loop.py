@@ -671,6 +671,10 @@ def _restore_or_build_system_prompt(agent, system_message, conversation_history)
                 agent.session_id, exc,
             )
 
+    if conversation_history and getattr(agent, "_native_memory_mediated", False) is True:
+        from agent.memory_runtime import validate_restored_memory_policy
+        validate_restored_memory_policy(agent, stored_prompt or "")
+
     if stored_prompt and _stored_prompt_matches_runtime(agent, stored_prompt):
         if _bot_chat_prompt_stale(agent, stored_prompt):
             logger.info(
@@ -1401,6 +1405,13 @@ def _run_api_retry_loop(agent, s: _LoopState) -> Optional[Dict[str, Any]]:
             return None
         try:
             _run_phase(build_api_request, agent, s)
+            # Send boundary (context_inclusion.v1): the messages just built are the
+            # ones the model adapter receives for this request id, prefix included.
+            # Attested once per request id; retries reuse the id.
+            if getattr(agent, "_captured_api_request_id", None) != s.api_request_id:
+                from agent.memory_events import capture_request
+                capture_request(agent, s.api_request_id, s.api_messages)
+                agent._captured_api_request_id = s.api_request_id
             if _run_phase(perform_api_call, agent, s).action == "break":
                 return None
             _rc = _run_phase(check_api_response, agent, s)

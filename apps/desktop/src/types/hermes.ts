@@ -1668,3 +1668,38 @@ export interface ModelAssignmentResponse {
   stale_aux?: StaleAuxAssignment[]
   tasks?: string[]
 }
+
+// Cortex Cognitive Provider — what the Hermes side can say (plugin, binding,
+// policy) plus what Cortex answers when reachable (`remote`).
+export interface CortexStatusResponse {
+  cortex: 'installed' | 'missing'
+  plugin: { installed: boolean; version: string | null }
+  binding: { present: true; bindingId: string; revision: number } | { present: false; reason?: string } | null
+  policy: { provider: string; provider_required: boolean; native_context: string } | { error: string } | null
+  governed: boolean
+  runtime: { state: string; lastObservedAt: string | null } | null
+  remote: { desiredState: string; revision: number; paused: boolean } | null
+  outbox: { queued: number } | null
+  action: 'activate' | 'install_cortex' | 'none' | 'reactivate'
+  capabilities?: string[]
+}
+
+export type CortexActivationState = 'applied' | 'cancelled' | 'expired' | 'failed' | 'pending'
+
+export interface CortexActivationStart {
+  operationId: string
+  deepLink: string
+  expiresAt: string
+}
+
+export interface CortexActivationResponse {
+  state: CortexActivationState
+  operationId: string
+  status?: CortexStatusResponse
+}
+
+export interface CortexVerifyResponse {
+  ok: boolean
+  providerStatus?: { state: string; provider: string }
+  runtime?: Record<string, unknown>
+}

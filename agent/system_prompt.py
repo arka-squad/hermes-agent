@@ -462,7 +462,9 @@ def _memory_parts(agent: Any) -> List[str]:
     the same check ``inject_memory_provider_tools`` uses, so we never advertise
     tools the toolset config gated off)."""
     parts: List[str] = []
-    if agent._memory_store:
+    # A provider mediating native memory (memory.native_context = provider) serves
+    # MEMORY.md/USER.md itself, qualified; the files stay writable but are not injected.
+    if agent._memory_store and getattr(agent, "_native_memory_mediated", False) is not True:
         for enabled, kind in ((agent._memory_enabled, "memory"), (agent._user_profile_enabled, "user")):
             block = agent._memory_store.format_for_system_prompt(kind) if enabled else None
             if block:
@@ -482,6 +484,9 @@ def _memory_parts(agent: Any) -> List[str]:
                 _ext_mem_block = None
             if _ext_mem_block:
                 parts.append(_ext_mem_block)
+    memory_policy = getattr(agent, "_memory_context_policy", "")
+    if isinstance(memory_policy, str) and memory_policy:
+        parts.append(memory_policy)
     return parts
 
 

@@ -79,7 +79,7 @@ def _agent_stale_thinking_on_wire(agent: Any) -> bool:
 
 
 def compose_user_api_content(
-    content: Any, ext_prefetch_cache: str, plugin_user_context: str
+    content: Any, ext_prefetch_cache: str, plugin_user_context: str, *, qualified: bool = False
 ) -> Optional[str]:
     """Compose the API-bound content of the current turn's user message.
 
@@ -87,7 +87,7 @@ def compose_user_api_content(
     (what turn N sends is what turn N+1 replays). ``None`` when nothing is injected."""
     if not isinstance(content, str):
         return None
-    fenced = build_memory_context_block(ext_prefetch_cache) if ext_prefetch_cache else ""
+    fenced = build_memory_context_block(ext_prefetch_cache, qualified=qualified) if ext_prefetch_cache else ""
     injections = [part for part in (fenced, plugin_user_context) if part]
     if not injections:
         return None
@@ -765,6 +765,11 @@ def _memory_turn_start_and_prefetch(
     """Notify memory providers of the new turn, then prefetch external memory once
     before the tool loop (skipped on trivial prompts with no semantic signal).
     Returns the prefetch text (``""`` when nothing was injected)."""
+    # durable_tool_capture.v1: the user message is committed before any provider
+    # sees the turn; a suspended capture refuses the turn here (no-op without a
+    # capturing provider).
+    from agent.memory_events import capture_turn_start
+    capture_turn_start(agent, original_user_message if isinstance(original_user_message, str) else "")
     if not agent._memory_manager:
         return ""
     _query = original_user_message if isinstance(original_user_message, str) else ""
@@ -802,7 +807,10 @@ def _stamp_api_content_sidecar(
     # Match the row the flush wrote (persist override = clean transcript), not the live bytes.
     durable_content, _api_content = durable_user_row_content(
         agent, _turn_user_msg, live_content,
-        compose_user_api_content(live_content or "", ext_prefetch_cache, plugin_user_context),
+        compose_user_api_content(
+            live_content or "", ext_prefetch_cache, plugin_user_context,
+            qualified=getattr(agent, "_native_memory_mediated", False) is True,
+        ),
     )
     if _api_content is None or _api_content == durable_content:
         return
@@ -1093,7 +1101,8 @@ def build_api_messages(
             else:
                 # Callers that bypass the prologue stamping: compose live.
                 _composed = compose_user_api_content(
-                    api_msg.get("content", ""), ext_prefetch_cache, plugin_user_context
+                    api_msg.get("content", ""), ext_prefetch_cache, plugin_user_context,
+                    qualified=getattr(agent, "_native_memory_mediated", False) is True,
                 )
                 if _composed is not None:
                     api_msg["content"] = _composed

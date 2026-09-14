@@ -885,6 +885,8 @@ class AIAgent(
         is almost certainly a retry of the same intent, and a prefetch keyed on the interrupted turn would
         fire against stale context. See #15218.
         """
+        from agent.memory_events import capture_turn_end
+        capture_turn_end(self, final_response, interrupted)
         if interrupted or not (self._memory_manager and final_response and original_user_message):
             return
         # Flatten multimodal parts to text (newline-joined for memory).

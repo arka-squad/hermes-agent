@@ -686,7 +686,14 @@ def _dispatch_authorized_once(
         agent._iters_since_skill = 0
 
     _advance_start_order(lambda: _begin_tool_execution(agent, ref, display_index))
-    return _run_with_activity_heartbeat(agent, ref.name, lambda: execute(ref.args))
+    # durable_tool_capture.v1: every real dispatch (sequential and concurrent, inline and
+    # registry tools) passes here exactly once, so the intent is committed before any side
+    # effect and the outcome after it — never twice for one tool_call_id.
+    from agent.memory_events import execute_with_capture
+    return _run_with_activity_heartbeat(
+        agent, ref.name,
+        lambda: execute_with_capture(agent, ref.name, ref.args, ref.call_id, execute),
+    )
 
 
 def _run_agent_tool_execution_middleware(

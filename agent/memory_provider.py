@@ -84,6 +84,13 @@ class MemoryProvider(ABC):
     def name(self) -> str:
         """Short identifier for this provider (e.g. 'builtin', 'honcho', 'hindsight')."""
 
+    # Optional host contract. Existing providers keep their previous behaviour.
+    # ``required_runtime_capabilities`` names host capabilities the provider
+    # cannot work without (``agent.memory_runtime.HOST_CAPABILITIES``);
+    # ``capture_without_native_memory`` lets it capture when skip_memory is set.
+    required_runtime_capabilities: frozenset[str] = frozenset()
+    capture_without_native_memory: bool = False
+
     # -- Core lifecycle (implement these) ------------------------------------
 
     @abstractmethod
@@ -170,6 +177,23 @@ class MemoryProvider(ABC):
 
     def on_delegation(self, task: str, result: str, *, child_session_id: str = "", **kwargs) -> None:
         """PARENT-side observation of a completed delegation (the subagent has no provider session)."""
+
+    def on_request_sent(self, request_id: str, messages: List[Dict[str, Any]]) -> None:
+        """Called at the send boundary by hosts offering context_inclusion.v1.
+
+        ``messages`` is the exact list given to the model adapter for
+        ``request_id``. Providers use it to attest that a context they served
+        is INCLUDED in a request — inclusion is not use. Must not raise to
+        block the request; failures are the provider's to journal.
+        """
+
+    def capture_event(self, event: Dict[str, Any]) -> None:
+        """Durably capture an event for providers opting into durable_tool_capture.v1.
+
+        Called synchronously at the execution boundary. Raise before an action
+        if its intent cannot be committed. Reject a repeated tool intent rather
+        than permitting an uncertain action to execute twice. Not best-effort.
+        """
 
     def get_config_schema(self) -> List[Dict[str, Any]]:
         """Setup fields for ``hermes memory setup`` ([] if none): ``key``, ``description``,
