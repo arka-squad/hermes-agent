@@ -237,6 +237,14 @@ def _build_child_agent(
                 **rt, max_iterations=max_iterations, prefill_messages=getattr(parent_agent, "prefill_messages", None),
                 enabled_toolsets=child_toolsets, disabled_toolsets=child_disabled_toolsets, quiet_mode=True,
                 ephemeral_system_prompt=child_prompt, log_prefix=f"[subagent-{task_index}]", platform="subagent",
+                # Preserve host-authenticated identity for explicitly opted-in providers.
+                # The delegation prompt cannot supply or replace these fields.
+                user_id=getattr(parent_agent, "_user_id", None),
+                user_id_alt=getattr(parent_agent, "_user_id_alt", None),
+                gateway_session_key=getattr(parent_agent, "_gateway_session_key", None),
+                chat_id=getattr(parent_agent, "_chat_id", None),
+                chat_type=getattr(parent_agent, "_chat_type", None),
+                thread_id=getattr(parent_agent, "_thread_id", None),
                 skip_context_files=True, skip_memory=True, clarify_callback=None,
                 thinking_callback=(
                     (lambda text: _safe_progress(child_progress_cb, "_thinking", text) if text else None)

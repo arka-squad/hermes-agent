@@ -2297,11 +2297,18 @@ def invoke_tool(agent, function_name: str, function_args: dict, effective_task_i
             import model_tools
             return model_tools.handle_function_call(function_name, next_args, effective_task_id, **dispatch_kwargs)
     if skip_tool_execution_middleware:
+        # Reached from the executors' single dispatch (``_dispatch_authorized_once``), which
+        # already captured this call: never a second intent for one tool_call_id.
         return _execute(function_args)
+    # Direct invocation (no executor funnel): durable_tool_capture.v1 applies here.
+    from agent.memory_events import execute_with_capture
     from hermes_cli.middleware import run_tool_execution_middleware
     return run_tool_execution_middleware(
         function_name, function_args,
-        lambda next_args: _execute(next_args if isinstance(next_args, dict) else function_args),
+        lambda next_args: execute_with_capture(
+            agent, function_name, next_args if isinstance(next_args, dict) else function_args,
+            tool_call_id, _execute,
+        ),
         original_args=function_args, **hook_ids,
     )
 

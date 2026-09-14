@@ -44,6 +44,7 @@ import {
   voiceFieldVisible
 } from './helpers'
 import { MemoryConnect } from './memory/connect'
+import { CortexProviderPanel } from './memory/cortex-panel'
 import { ProviderConfigPanel } from './memory/provider-config-panel'
 import { ModelSettings, ModelSettingsSkeleton } from './model-settings'
 import { PoolLimitsSetting } from './pool-limits-setting'
@@ -445,6 +446,9 @@ function ConfigSettingsInner({
                   provider={String(getNested(config, key))}
                 />
               ) : null}
+              {/* Cortex is activated from here BEFORE it is the selected provider:
+                  the guided activation selects it (Cortex spec §5.1). */}
+              {key === 'memory.provider' ? <CortexProviderPanel profile={scopeProfile} /> : null}
             </div>
           ))}
         </div>

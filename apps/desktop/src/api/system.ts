@@ -5,6 +5,10 @@ import type {
   AudioTranscriptionResponse,
   AudioTtsLeaseResponse,
   BackendUpdateCheckResponse,
+  CortexActivationResponse,
+  CortexActivationStart,
+  CortexStatusResponse,
+  CortexVerifyResponse,
   CuratorStatusResponse,
   DebugShareResponse,
   ElevenLabsVoicesResponse,
@@ -263,6 +267,48 @@ export function runDebugShare(): Promise<DebugShareResponse> {
     method: 'POST',
     body: {},
     // Synchronous upload of report + logs to the paste service.
+    timeoutMs: 120_000
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Cortex Cognitive Provider (hermes_cli/cortex_routes.py). Profile-scoped like
+// the other memory routes: the binding lives in one profile directory.
+// ---------------------------------------------------------------------------
+
+export function getCortexStatus(profile?: null | string): Promise<CortexStatusResponse> {
+  return hermesApi<CortexStatusResponse>({
+    ...profileScoped(profile),
+    path: '/api/cortex/status'
+  })
+}
+
+/** Creates a single-use activation operation; the returned deep link opens
+ *  Cortex on the confirmation. No secret travels. */
+export function startCortexActivation(profile?: null | string): Promise<CortexActivationStart> {
+  return hermesApi<CortexActivationStart>({
+    ...profileScoped(profile),
+    path: '/api/cortex/activation',
+    method: 'POST',
+    body: { profile: profile ?? null }
+  })
+}
+
+export function getCortexActivation(operationId: string, profile?: null | string): Promise<CortexActivationResponse> {
+  return hermesApi<CortexActivationResponse>({
+    ...profileScoped(profile),
+    path: `/api/cortex/activation/${encodeURIComponent(operationId)}`
+  })
+}
+
+/** Runs the plugin's diagnostic runtime: a real Hermes agent, this profile,
+ *  no model request. Prepares the proof; it does not restart a session. */
+export function verifyCortex(profile?: null | string): Promise<CortexVerifyResponse> {
+  return hermesApi<CortexVerifyResponse>({
+    ...profileScoped(profile),
+    path: '/api/cortex/verify',
+    method: 'POST',
+    body: { profile: profile ?? null },
     timeoutMs: 120_000
   })
 }
