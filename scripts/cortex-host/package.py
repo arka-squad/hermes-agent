@@ -15,6 +15,7 @@ Cortex embarque ce paquet à son build (`Hermers-plugin/host/generate.py`) et
 le télécharge à l'exécution depuis l'index publié (`scripts/publish-hermes-host.sh`
 côté Cortex signe et publie). Les deux voies posent exactement ces octets.
 """
+import gzip
 import hashlib
 import io
 import json
@@ -40,6 +41,9 @@ def sha_normalized(data: bytes) -> str:
 
 base_sha = git("rev-parse", base_ref).decode().strip()
 host_commit = git("rev-parse", "HEAD").decode().strip()
+# Le paquet est reproductible : mêmes commits, mêmes octets. L'horodatage est
+# celui du commit hôte, jamais l'heure de construction.
+built_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(int(git("show", "-s", "--format=%ct", "HEAD"))))
 if git("status", "--porcelain", "--untracked-files=no").strip():
     raise SystemExit("arbre modifié : commettez avant de construire un paquet")
 version = re.search(r'^version\s*=\s*"([^"]+)"', git("show", f"{base_sha}:pyproject.toml").decode(), re.M).group(1)
@@ -63,7 +67,7 @@ manifest = {
     "hermesVersion": version,
     "hostRepo": "https://github.com/arka-squad/hermes-agent",
     "hostCommit": host_commit,
-    "builtAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    "builtAt": built_at,
     "files": entries,
 }
 out_dir.mkdir(parents=True, exist_ok=True)
@@ -79,10 +83,14 @@ def add(tar: tarfile.TarFile, path: str, data: bytes) -> None:
     tar.addfile(info, io.BytesIO(data))
 
 
-with tarfile.open(target, "w:gz", format=tarfile.USTAR_FORMAT if False else tarfile.GNU_FORMAT) as tar:
+buffer = io.BytesIO()
+with tarfile.open(fileobj=buffer, mode="w", format=tarfile.GNU_FORMAT) as tar:
     add(tar, "manifest.json", (json.dumps(manifest, indent=2, ensure_ascii=False) + "\n").encode())
     for entry in entries:
         add(tar, entry["path"], blobs[entry["path"]])
+# gzip sans nom ni date dans son en-tête : rien ne dépend du moment ni du dossier.
+with open(target, "wb") as raw, gzip.GzipFile(filename="", mode="wb", fileobj=raw, mtime=0) as gz:
+    gz.write(buffer.getvalue())
 digest = hashlib.sha256(target.read_bytes()).hexdigest()
 (out_dir / (name + ".sha256")).write_text(f"{digest}  {name}\n")
 print(json.dumps({"package": str(target), "sha256": digest, "size": target.stat().st_size,
