@@ -39,7 +39,7 @@ def sha_normalized(data: bytes) -> str:
     return hashlib.sha256(data.replace(b"\r\n", b"\n")).hexdigest()
 
 
-base_sha = git("rev-parse", base_ref).decode().strip()
+base_sha = git("rev-parse", f"{base_ref}^{{commit}}").decode().strip()  # un tag annoté se résout en son commit
 host_commit = git("rev-parse", "HEAD").decode().strip()
 # Le paquet est reproductible : mêmes commits, mêmes octets. L'horodatage est
 # celui du commit hôte, jamais l'heure de construction.
